@@ -1,0 +1,15 @@
+quartus/db/
+quartus/incremental_db/
+quartus/output_files/
+quartus/simulation/
+
+*.rpt
+*.smsg
+*.summary
+*.done
+*.pin
+*.jdi
+*c5_pin_model_dump.txt
+
+!quartus/*.qpf
+!quartus/*.qsf
