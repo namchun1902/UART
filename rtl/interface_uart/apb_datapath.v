@@ -56,7 +56,7 @@ module apb_datapath (
 
   // 3. Cac thanh ghi
   // I. Thanh ghi tx_data_reg
-  always @(posedge pclk) begin
+  always @(posedge pclk or negedge presetn) begin
     if (!presetn) begin
       tx_data_reg <= 0;
     end else if (wr_tx_data_en) begin
@@ -70,7 +70,7 @@ module apb_datapath (
   assign tx_data = tx_data_reg[7:0];
 
   // II. Thanh ghi cfg_reg
-  always @(posedge pclk) begin
+  always @(posedge pclk or negedge presetn) begin
     if (!presetn) begin
       cfg_reg <= 0;
     end else if (wr_cfg_en) begin
@@ -87,7 +87,7 @@ module apb_datapath (
   assign parity_type  = cfg_reg[4];
 
   // III. Thanh ghi ctrl_reg
-  always @(posedge pclk) begin
+  always @(posedge pclk or negedge presetn) begin
     if (!presetn) begin
       ctrl_reg <= 0;
     end else if (wr_ctrl_en) begin
@@ -102,7 +102,7 @@ module apb_datapath (
   assign start_tx = ctrl_reg[0];
 
   // IV. Thanh ghi rx_data_reg
-  always @(posedge pclk) begin
+  always @(posedge pclk or negedge presetn) begin
     if(!presetn) begin
       rx_data_reg <= 0;
     end else if (rx_done) begin
@@ -113,7 +113,7 @@ module apb_datapath (
   end
 
   // V. Thanh ghi stt_reg
-  always @(posedge pclk) begin
+  always @(posedge pclk or negedge presetn) begin
     if (!presetn) begin
       stt_reg <= 0;
     end else begin
