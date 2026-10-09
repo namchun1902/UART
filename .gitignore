@@ -13,3 +13,14 @@ quartus/simulation/
 
 !quartus/*.qpf
 !quartus/*.qsf
+
+# ModelSim / QuestaSim generated files
+quartus/work/
+*.wlf
+*.vcd
+*.cr.mti
+*.mpf
+
+# Bỏ qua các file backup hoặc temp của VS Code / OS
+.DS_Store
+Thumbs.db
