@@ -50,9 +50,9 @@ module apb_datapath (
   wire wr_ctrl_en;
 
   // 2. Write Decoder
-  assign wr_tx_data_en = reg_wr_en && penable && pstrb[0] && (paddr == 12'h000);
-  assign wr_cfg_en     = reg_wr_en && penable && pstrb[0] && (paddr == 12'h008);
-  assign wr_ctrl_en    = reg_wr_en && penable && pstrb[0] && (paddr == 12'h00C);
+  assign wr_tx_data_en = reg_wr_en && pstrb[0] && (paddr == 12'h000);
+  assign wr_cfg_en     = reg_wr_en && pstrb[0] && (paddr == 12'h008);
+  assign wr_ctrl_en    = reg_wr_en && pstrb[0] && (paddr == 12'h00C);
 
   // 3. Cac thanh ghi
   // I. Thanh ghi tx_data_reg
@@ -117,16 +117,23 @@ module apb_datapath (
     if (!presetn) begin
       stt_reg <= 0;
     end else begin
-      stt_reg <= {29'b0, parity_error, rx_done, tx_done};
+      // 1. Mac dinh clear khi CPU thuc hien doc thanh ghi stt_reg (0x010)
+      if (reg_rd_en && (paddr == 12'h010)) begin
+        stt_reg[2:0] <= 3'b000;
+      end
+
+      if (tx_done)      stt_reg[0] <= 1'b1;
+      if (rx_done)      stt_reg[1] <= 1'b1;
+      if (parity_error) stt_reg[2] <= 1'b1;
     end
   end
   
   // Tin hieu clear_rx_done cho uart RX
-  assign clear_rx_done = (paddr == 12'h004) && penable && reg_rd_en;
+  assign clear_rx_done = (paddr == 12'h004) && reg_rd_en;
 
   //4. Bo MUX cho prdata
   always @(reg_rd_en or paddr or tx_data_reg or cfg_reg or ctrl_reg or rx_data_reg or stt_reg) begin
-    if (reg_rd_en && penable) begin
+    if (reg_rd_en) begin
       case (paddr)
         12'h000: prdata = tx_data_reg;
         12'h008: prdata = cfg_reg;

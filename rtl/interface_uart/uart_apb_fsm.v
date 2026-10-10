@@ -35,7 +35,7 @@ module uart_apb_fsm (
   end
 
   // Next state logic
-  always @(current_state or psel) begin
+  always @(current_state or psel or penable) begin
     next_state = current_state;
 
     case (current_state)
@@ -43,17 +43,16 @@ module uart_apb_fsm (
         if (psel) next_state = SETUP;
         else      next_state = IDLE;
       end
-      SETUP: next_state = ACCESS;
-      ACCESS: begin
-        if (psel) next_state = SETUP;
-        else      next_state = IDLE;
+      SETUP:  begin
+        if (penable) next_state = ACCESS; // penable chac chan len 1 theo apb
       end
+      ACCESS: next_state = IDLE;
       default: next_state = IDLE;
     endcase
   end
 
   // Output logic
-  always @(current_state or addr_match or pwrite) begin
+  always @(current_state or addr_match or pwrite or penable) begin
     {pready, pslverr, reg_wr_en, reg_rd_en} = 4'b0;
 
     case (current_state)
@@ -63,7 +62,7 @@ module uart_apb_fsm (
         reg_wr_en = 0;
         reg_rd_en = 0;
       end
-      SETUP: begin
+      SETUP:begin
       end
       ACCESS: begin
         pready    = 1;
