@@ -24,7 +24,6 @@ module tx_data_path
     reg [2:0] bit_cnt; 
     reg [2:0] max_val;
 
-    // ĐÃ SỬA: Luôn dùng always @(*) cho mạch tổ hợp
     always @(*) begin
         case(data_bit_num)
             2'b00:   max_val = 3'd4; 
@@ -49,7 +48,6 @@ module tx_data_path
     reg [1:0] stop_cnt; 
     reg [1:0] max_stop_val;
 
-    // ĐÃ SỬA: Luôn dùng always @(*) cho mạch tổ hợp
     always @(*) begin
         case(stop_bit_num)
             1'b0:    max_stop_val = 2'd1; 
@@ -74,7 +72,6 @@ module tx_data_path
     wire                even_parity_cal;
     wire                parity_bit;
 
-    // ĐÃ SỬA: Luôn dùng always @(*) cho mạch tổ hợp
     always @(*) begin
         case(data_bit_num)
             2'b00:   mask = 8'b0001_1111; 
