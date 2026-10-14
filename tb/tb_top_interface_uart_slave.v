@@ -174,16 +174,35 @@ module tb_top_interface_uart_slave;
     @(posedge pclk);
 
     // --- TC3: Cau hinh cfg_reg (0x008) ---
+    // Pha SETUP cua FSM - Slave o IDLE
     @(posedge pclk); #1;
-    psel = 1; penable = 0; pwrite = 1; paddr = 12'h008; pwdata = 32'h1F; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk);
+    psel = 1;
+    penable = 0;
+    pwrite = 1;
+    paddr = 12'h008;
+    pwdata = 32'h0000001F;
+    pstrb = 4'h1;
+    // Pha ACCESS MASTER - SETUP cua Slave
+    @(posedge pclk); #1;
+    penable = 1;
+    // Slave sang ACCESS
+    @(posedge pclk); #1;
+    // Ve IDLE
+    @(posedge pclk); #1;
     psel = 0; penable = 0;
+
     @(posedge pclk); #1;
     // Doc lai 0x008
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h008;
-    @(posedge pclk); penable = 1;
+    // Pha SETUP MASTER - IDLE o Slave
     @(posedge pclk); #1;
+    psel = 1;
+    penable = 0;
+    pwrite = 0;
+    paddr = 12'h008;
+    // MASTER sang pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    @(posedge pclk); #1; // Slave sang pha ACCESS
     if (data_bit_num == 2'b11 && stop_bit_num == 1'b1 && parity_en == 1'b1 && parity_type == 1'b1 && prdata[4:0] == 5'b11111) begin
       $display("[PASS] TC3: Cau hinh cfg_reg thanh cong (8b, 2 stop, Even)");
       pass_cnt = pass_cnt + 1;
@@ -194,11 +213,31 @@ module tb_top_interface_uart_slave;
     @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);
 
     // --- TC4: Auto-Clear start_tx trong ctrl_reg (0x00C) ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h00C; pwdata = 32'h01; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); // Vao ACCESS
-    psel = 0; penable = 0;
-    @(posedge pclk); #1; // Ket thuc ACCESS, ctrl_reg[0] chot len 1!
+    // 1. MASTER o pha SETUP
+    @(posedge pclk); #1;
+    psel = 1;
+    penable = 0;
+    pwrite = 1;
+    paddr = 12'h00C;
+    pwdata = 32'h01;
+    pstrb = 4'h1;
+
+    // 2. Chuyen pha
+    @(posedge pclk); #1; // MASTER sang pha ACCESS
+    penable = 1;
+
+    // 3. FSM Slave sang SETUP
+    @(posedge pclk); #1; // Slave sang ACCESS
+
+    //4. Suon clock cho pwdata vao ctrl_reg, start_tx bat len 1
+    // FSM sang IDLE
+    @(posedge pclk); #1;
+    psel = 1'b0;
+    penable = 1'b0;
+    pwrite = 1'b0;
+    #1;
+
+    // Check start_tx len 1 hay chua
     if (start_tx == 1'b1) begin
       $display("[PASS] TC4.1: start_tx da bat len 1 thanh cong");
       pass_cnt = pass_cnt + 1;
@@ -206,6 +245,8 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC4.1 (start_tx bat len 1): start_tx = %b (mong muon 1)", start_tx);
       err_cnt = err_cnt + 1;
     end
+
+    // pwrite = 0 --> reg_wr_en = 0 --> wr_ctrl_en = 0 --> start_tx = ctrl_reg[0] <= 1'b0
     @(posedge pclk); #1; // Chu ky tiep theo khong con lenh ghi, start_tx tu dong xoa ve 0!
     if (start_tx == 1'b0) begin
       $display("[PASS] TC4.2: start_tx da tu dong xoa ve 0 sau 1 clock (Auto-Clear)");
