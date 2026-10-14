@@ -38,31 +38,31 @@ module tb_top_interface_uart_slave;
   // 2. KHOI TAO DUT
   //-------------------------------------------------------------
   top_interface_uart_slave dut (
-    .pclk          (pclk),
-    .presetn       (presetn),
-    .psel          (psel),
-    .penable       (penable),
-    .pwrite        (pwrite),
-    .paddr         (paddr),
-    .pwdata        (pwdata),
-    .pstrb         (pstrb),
-    .prdata        (prdata),
-    .pready        (pready),
-    .pslverr       (pslverr),
-    .tx_data       (tx_data),
-    .start_tx      (start_tx),
-    .tx_done       (tx_done),
-    .rx_data       (rx_data),
-    .rx_done       (rx_done),
-    .parity_error  (parity_error),
-    .clear_rx_done (clear_rx_done),
-    .data_bit_num  (data_bit_num),
-    .stop_bit_num  (stop_bit_num),
-    .parity_en     (parity_en),
-    .parity_type   (parity_type)
+    .pclk          ( pclk          ),
+    .presetn       ( presetn       ),
+    .psel          ( psel          ),
+    .penable       ( penable       ),
+    .pwrite        ( pwrite        ),
+    .paddr         ( paddr         ),
+    .pwdata        ( pwdata        ),
+    .pstrb         ( pstrb         ),
+    .prdata        ( prdata        ),
+    .pready        ( pready        ),
+    .pslverr       ( pslverr       ),
+    .tx_data       ( tx_data       ),
+    .start_tx      ( start_tx      ),
+    .tx_done       ( tx_done       ),
+    .rx_data       ( rx_data       ),
+    .rx_done       ( rx_done       ),
+    .parity_error  ( parity_error  ),
+    .clear_rx_done ( clear_rx_done ),
+    .data_bit_num  ( data_bit_num  ),
+    .stop_bit_num  ( stop_bit_num  ),
+    .parity_en     ( parity_en     ),
+    .parity_type   ( parity_type   )
   );
 
-  // Xung clock 50MHz (T = 20ns)
+  // Xung clock 50MHz (T = 1/F = 1/50Mhz = 20ns)
   initial begin
     pclk = 0;
     forever #10 pclk = ~pclk;
@@ -93,11 +93,27 @@ module tb_top_interface_uart_slave;
     $display("BAT DAU KIEM THU 17 EDGE CASES TOAN DIEN KHOI INTERFACE");
     $display("==========================================================");
 
-    // --- TC1: Reset he thong & Gia tri mac dinh ---
+  // --- TC1: Reset he thong & Gia tri mac dinh ---
     #25; presetn = 1; @(posedge pclk);
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h010; // SETUP
-    @(posedge pclk); penable = 1;                                        // ACCESS
-    @(posedge pclk); #1;                                                 // Tai ACCESS phase
+
+    // 1. Trang thai hien tai IDLE
+    // MASTER dang o pha SETUP
+    @(posedge pclk); #1; // Delay 1ns tranh race condition
+    // FSM o IDLE
+    psel = 1'b1;
+    penable = 1'b0;
+    pwrite = 0;
+    paddr = 12'h010; // Doc stt_reg
+
+    // 2. Chuyen trang thai sang ACESS
+    // MASTER sang pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    #1;
+    // 3. FSM sang ACCESS
+    @(posedge pclk) #1;
+
+    // Neu reset thi stt_reg[0] = 1'b1
     if (prdata == 32'h00000001 && pready == 1'b1 && pslverr == 1'b0) begin
       $display("[PASS] TC1: Reset dung, stt_reg = 0x%08h (tx_done = 1)", prdata);
       pass_cnt = pass_cnt + 1;
@@ -105,30 +121,61 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC1 (Reset): prdata = 0x%08h (mong muon 0x00000001), pready = %b, pslverr = %b", prdata, pready, pslverr);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);             // IDLE
+    // Quay ve IDLE
+    @(posedge pclk); #1; psel = 0; penable = 0;
 
-    // --- TC2: Ghi va Doc tx_data_reg (0x000) ---
+  // --- TC2: Ghi va Doc tx_data_reg (0x000) ---
     // Ghi 0xA5
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'hA5; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); // Ket thuc ACCESS, tx_data_reg chot 0xA5
-    psel = 0; penable = 0;
+    // 1. Pha SETUP cua MASTER
+    @(posedge pclk);
+      #1; // Tre sau suon clock 1ns
+      psel = 1;
+      penable = 0;
+      pwrite = 1;
+      paddr = 12'h000;
+      pwdata = 32'hA5;
+      pstrb = 4'h1;
+
+    @(posedge pclk); // MASTER sang pha ACCESS, Slave sang SETUP
+    #1;
+    penable = 1;
+    @(posedge pclk); // FSM Slave moi sang ACCESS
     @(posedge pclk); #1;
-    // Doc lai 0x000
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h000;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); #1; // ACCESS phase
-    if (tx_data == 8'hA5 && prdata[7:0] == 8'hA5) begin
+    // Hoan tat ghi -> Keo bus ve IDLE
+    psel    = 1'b0;
+    penable = 1'b0;
+    pwrite  = 1'b0;
+
+    // 2. Lenh doc lai du lieu
+    @(posedge pclk); #1;
+    // Pha SETUP cua MASTER
+    psel    = 1'b1;
+    penable = 1'b0;
+    pwrite  = 1'b0;
+    paddr   = 12'h000;
+    @(posedge pclk); #1;
+    // MASTER Sang pha ACCESS
+    penable = 1'b1;
+
+    // Slave sang ACCESS
+    @(posedge pclk); #1;
+    // Doi tin hieu on dinh
+
+    if (tx_data == 8'ha5 && prdata[7:0] == 8'ha5) begin
       $display("[PASS] TC2: Ghi doc tx_data_reg thanh cong (0xA5)");
       pass_cnt = pass_cnt + 1;
     end else begin
-      $display("[FAIL] TC2 (Ghi/Doc tx_data_reg): tx_data = 0x%02h, prdata = 0x%08h (mong muon 0xA5)", tx_data, prdata);
+      $display("[FAIL] TC2 (Ghi/Doc tx_data_reg): tx_data = 0x%02h, prdata = 0x%08h (mong muon 0xa5)", tx_data, prdata);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);
+    // Reset ve IDLE
+    @(posedge pclk);
+    psel = 0; penable = 0;
+    @(posedge pclk);
 
     // --- TC3: Cau hinh cfg_reg (0x008) ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h008; pwdata = 32'h1F; pstrb = 4'h1;
+    @(posedge pclk); #1;
+    psel = 1; penable = 0; pwrite = 1; paddr = 12'h008; pwdata = 32'h1F; pstrb = 4'h1;
     @(posedge pclk); penable = 1;
     @(posedge pclk);
     psel = 0; penable = 0;

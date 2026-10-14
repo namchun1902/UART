@@ -43,11 +43,9 @@ module uart_apb_fsm (
         if (psel) next_state = SETUP;
         else      next_state = IDLE;
       end
-      SETUP:  begin
-        if (penable) next_state = ACCESS; // penable chac chan len 1 theo apb
-      end
-      ACCESS: next_state = IDLE;
-      default: next_state = IDLE;
+      SETUP:      next_state = ACCESS; // penable chac chan len 1 theo apb
+      ACCESS:     next_state = IDLE;
+      default:    next_state = IDLE;
     endcase
   end
 
@@ -67,8 +65,8 @@ module uart_apb_fsm (
       ACCESS: begin
         pready    = 1;
         pslverr   = !addr_match;
-        reg_wr_en = pwrite && addr_match;
-        reg_rd_en = !pwrite && addr_match;
+        reg_wr_en =  pwrite && addr_match && penable;
+        reg_rd_en = !pwrite && addr_match && penable;
       end
       default: begin
         pready    = 0;

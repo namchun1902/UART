@@ -1,38 +1,38 @@
 module apb_datapath (
   // Input APB Bus
-  input wire pclk,
-  input wire presetn,
+  input wire        pclk,
+  input wire        presetn,
   input wire [11:0] paddr,  // Bus dia chi tu APB Master
   input wire [31:0] pwdata, // Tin hieu vao 3 thanh ghi tx_data_reg, cfg_reg, ctrl_reg
-  input wire [3:0] pstrb,
+  input wire [3:0]  pstrb,
 
   // Input tu FSM
-  input wire reg_wr_en,
-  input wire reg_rd_en,
+  input wire       reg_wr_en,
+  input wire       reg_rd_en,
 
   // Tu uart_tx & uart_rx
   input wire [7:0] rx_data,
-  input wire rx_done,
-  input wire parity_error,
+  input wire       rx_done,
+  input wire       parity_error,
 
-  input wire tx_done,
+  input wire       tx_done,
 
   // Output ve APB Bus
   output reg [31:0] prdata,
 
   // Output cho FSM
-  output wire addr_match,
+  output wire       addr_match,
   
   // Output cho uart_tx & uart_rx
   output wire [7:0] tx_data,
-  output wire start_tx,
-  output wire clear_rx_done,
+  output wire       start_tx,
+  output wire       clear_rx_done,
 
   // Tin hieu cho ca tx, rx tu cfg_reg
   output wire [1:0] data_bit_num,
-  output wire stop_bit_num,
-  output wire parity_en,
-  output wire parity_type
+  output wire       stop_bit_num,
+  output wire       parity_en,
+  output wire       parity_type
 );
   // Cac thanh ghi trong datapath
   reg [31:0] tx_data_reg;
