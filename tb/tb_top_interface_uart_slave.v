@@ -71,7 +71,7 @@ module tb_top_interface_uart_slave;
   end
 
   //-------------------------------------------------------------
-  // 3. 17 EDGE CASES KIEM THU TOAN DIEN CHO KHOI INTERFACE
+  // 3. KIEM THU TOAN DIEN CHO KHOI INTERFACE
   //-------------------------------------------------------------
   initial begin
     $dumpfile("tb_top_interface_uart_slave.vcd");
@@ -92,7 +92,7 @@ module tb_top_interface_uart_slave;
     parity_error = 0;
 
     $display("==========================================================");
-    $display("BAT DAU KIEM THU 17 EDGE CASES TOAN DIEN KHOI INTERFACE");
+    $display("BAT DAU KIEM THU TOAN DIEN KHOI INTERFACE");
     $display("==========================================================");
 
   // --- TC1: Reset he thong & Gia tri mac dinh ---
@@ -537,19 +537,14 @@ module tb_top_interface_uart_slave;
     // rx_data_reg cux dang duoc noi voi MUX doi reg_rd_en tu FSM de cho ra prdata
     @(posedge pclk); #1;
     penable = 1;
-    // Du lieu duoc RX gui sang cung luc - Doi truoc rx_data_reg cho xung clock
-    rx_data = 8'h7E; // Du lieu rx_data moi duoc UART_RX gui sang
-    rx_done = 1;     // RX gui byte moi
 
-    // 3. Chot prdata ngay tai suon clock ket thuc ACCESS 
+    // 3. Slave sang ACCESS
     // prdata_sample nhan du lieu cu cua rx_data_reg truyen thang ve Bus APB MASTER
     // Dong thoi rx_data = 0x7E, rx_done = 1 moi duoc luu vao rx_data_reg
-    @(posedge pclk);
+    @(posedge pclk); #1;
     prdata_sample = prdata;
-    #1; // Luc nay prdata da bang 0x7E
-    psel    = 0;
-    penable = 0;
-    rx_done = 0;
+    rx_data = 8'h7E; // Du lieu rx_data moi duoc UART_RX gui sang
+    rx_done = 1;     // RX gui tin hieu done
 
     // TESTPOINT 1: Kiem tra lan doc 1 -> Phai doc an toan gia tri cu (0x3C) - Gia tri gui ve Bus APB
     if (prdata_sample[7:0] == 8'h3C) begin
@@ -561,8 +556,11 @@ module tb_top_interface_uart_slave;
     end
     #1;
 
-    // Doi 1 suon clock de ve IDLE
-    @(posedge pclk); #1;
+    // 4. Ket thuc ACCESS, sườn clock nay rx_data_reg moi chot 0x7E vao trong
+    @(posedge pclk); #1; // Luc nay prdata da bang 0x7E
+    psel    = 0;
+    penable = 0;
+    rx_done = 0;
 
     // 4. MASTER phat ra pha SETUP 2
     // Doc lai 0x004
@@ -866,12 +864,12 @@ module tb_top_interface_uart_slave;
     $display("TONG KET KIEM THU INTERFACE APB SLAVE:");
     $display("SO TESTCASE THANH CONG: %0d", pass_cnt);
     $display("SO TESTCASE THAT BAI:   %0d", err_cnt);
-    if (err_cnt == 0) $display("KET LUAN: >>> INTERFACE APB SLAVE DAT DIEM TOI DA! <<<");
+    if (err_cnt == 0) $display("KET LUAN: >>> INTERFACE APB SLAVE HOAN TOAN KHONG CO LOI! <<<");
     else              $display("KET LUAN: >>> CO LOI CAN KIEM TRA! <<<");
     $display("==========================================================");
 
     #50;
-    $finish;
+    $finish; 
   end
 
 endmodule
