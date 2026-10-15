@@ -44,7 +44,10 @@ module uart_apb_fsm (
         else      next_state = IDLE;
       end
       SETUP:      next_state = ACCESS; // penable chac chan len 1 theo apb
-      ACCESS:     next_state = IDLE;
+      ACCESS: begin
+        if(psel)  next_state = SETUP;
+        else      next_state = IDLE;
+      end
       default:    next_state = IDLE;
     endcase
   end

@@ -100,10 +100,10 @@ module tb_top_interface_uart_slave;
     // MASTER dang o pha SETUP
     @(posedge pclk); #1; // Delay 1ns tranh race condition
     // FSM o IDLE
-    psel = 1'b1;
+    psel    = 1'b1;
     penable = 1'b0;
-    pwrite = 0;
-    paddr = 12'h010; // Doc stt_reg
+    pwrite  = 0;
+    paddr   = 12'h010; // Doc stt_reg
 
     // 2. Chuyen trang thai sang ACESS
     // MASTER sang pha ACCESS
@@ -122,19 +122,21 @@ module tb_top_interface_uart_slave;
       err_cnt = err_cnt + 1;
     end
     // Quay ve IDLE
-    @(posedge pclk); #1; psel = 0; penable = 0;
+    @(posedge pclk); #1;
+    psel    = 0;
+    penable = 0;
 
   // --- TC2: Ghi va Doc tx_data_reg (0x000) ---
     // Ghi 0xA5
     // 1. Pha SETUP cua MASTER
     @(posedge pclk);
       #1; // Tre sau suon clock 1ns
-      psel = 1;
+      psel    = 1;
       penable = 0;
-      pwrite = 1;
-      paddr = 12'h000;
-      pwdata = 32'hA5;
-      pstrb = 4'h1;
+      pwrite  = 1;
+      paddr   = 12'h000;
+      pwdata  = 32'hA5;
+      pstrb   = 4'h1;
 
     @(posedge pclk); // MASTER sang pha ACCESS, Slave sang SETUP
     #1;
@@ -169,19 +171,20 @@ module tb_top_interface_uart_slave;
       err_cnt = err_cnt + 1;
     end
     // Reset ve IDLE
-    @(posedge pclk);
-    psel = 0; penable = 0;
+    @(posedge pclk); #1;
+    psel    = 0;
+    penable = 0;
     @(posedge pclk);
 
     // --- TC3: Cau hinh cfg_reg (0x008) ---
     // Pha SETUP cua FSM - Slave o IDLE
     @(posedge pclk); #1;
-    psel = 1;
+    psel    = 1;
     penable = 0;
-    pwrite = 1;
-    paddr = 12'h008;
-    pwdata = 32'h0000001F;
-    pstrb = 4'h1;
+    pwrite  = 1;
+    paddr   = 12'h008;
+    pwdata  = 32'h0000001F;
+    pstrb   = 4'h1;
     // Pha ACCESS MASTER - SETUP cua Slave
     @(posedge pclk); #1;
     penable = 1;
@@ -189,16 +192,17 @@ module tb_top_interface_uart_slave;
     @(posedge pclk); #1;
     // Ve IDLE
     @(posedge pclk); #1;
-    psel = 0; penable = 0;
+    psel    = 0;
+    penable = 0;
 
     @(posedge pclk); #1;
     // Doc lai 0x008
     // Pha SETUP MASTER - IDLE o Slave
     @(posedge pclk); #1;
-    psel = 1;
+    psel    = 1;
     penable = 0;
-    pwrite = 0;
-    paddr = 12'h008;
+    pwrite  = 0;
+    paddr   = 12'h008;
     // MASTER sang pha ACCESS
     @(posedge pclk); #1;
     penable = 1;
@@ -215,26 +219,26 @@ module tb_top_interface_uart_slave;
     // --- TC4: Auto-Clear start_tx trong ctrl_reg (0x00C) ---
     // 1. MASTER o pha SETUP
     @(posedge pclk); #1;
-    psel = 1;
+    psel    = 1;
     penable = 0;
-    pwrite = 1;
-    paddr = 12'h00C;
-    pwdata = 32'h01;
-    pstrb = 4'h1;
+    pwrite  = 1;
+    paddr   = 12'h00C;
+    pwdata  = 32'h01;
+    pstrb   = 4'h1;
 
     // 2. Chuyen pha
     @(posedge pclk); #1; // MASTER sang pha ACCESS
     penable = 1;
 
-    // 3. FSM Slave sang SETUP
+    // 3. FSM Slave sang ACCESS
     @(posedge pclk); #1; // Slave sang ACCESS
 
     //4. Suon clock cho pwdata vao ctrl_reg, start_tx bat len 1
     // FSM sang IDLE
     @(posedge pclk); #1;
-    psel = 1'b0;
+    psel    = 1'b0;
     penable = 1'b0;
-    pwrite = 1'b0;
+    pwrite  = 1'b0;
     #1;
 
     // Check start_tx len 1 hay chua
@@ -257,11 +261,28 @@ module tb_top_interface_uart_slave;
     end
     @(posedge pclk);
 
-    // --- TC5: RX nhan du lieu va clear_rx_done khi doc 0x004 ---
-    rx_data = 8'h3C; rx_done = 1; parity_error = 1; @(posedge pclk); #1;
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h004;
-    @(posedge pclk); penable = 1;
+  // --- TC5: RX nhan du lieu va clear_rx_done khi doc 0x004 ---
+    // Trang thai IDLE
     @(posedge pclk); #1;
+    // Tin hieu tu UART_RX sang
+    rx_data      = 8'h3C; // Du lieu vao prdata[7:0]
+    rx_done      = 1;
+    parity_error = 1;
+
+    // Pha SETUP cua MASTER
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;
+    paddr   = 12'h004;
+    // Pha ACCESS cua MASTER - Slave o SETUP
+    @(posedge pclk); #1;
+    penable = 1;
+    // Slave sang ACCESS
+    @(posedge pclk); #1;
+
+    // FSM: reg_rd_en = !pwrite && addr_match && penable
+    // clear_rx_done = (paddr == 12'h004) && reg_rd_en
     if (clear_rx_done == 1'b1 && prdata[7:0] == 8'h3C) begin
       $display("[PASS] TC5: Doc rx_data_reg dung (0x3C) va phat xung clear_rx_done = 1");
       pass_cnt = pass_cnt + 1;
@@ -269,19 +290,57 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC5 (RX nhan va clear_rx_done): prdata = 0x%08h (mong muon 0x3C), clear_rx_done = %b (mong muon 1)", prdata, clear_rx_done);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; rx_done = 0; parity_error = 0; @(posedge pclk);
+
+    // Reset ve IDLE
+    @(posedge pclk); #1;
+    psel         = 0;
+    penable      = 0;
+    rx_done      = 0;
+    parity_error = 0;
+    @(posedge pclk); #1;
 
     // --- TC6: Read-After-Write (Ghi xong doc lai ngay lap tuc) ---
+    // 1. Pha SETUP cua MASTER
     // Ghi 0xB4
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'hB4; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk);
-    psel = 0; penable = 0;
-    @(posedge pclk); // 0xB4 da duoc chot vao tx_data_reg!
-    // Doc ngay 0x000
-    psel = 1; penable = 0; pwrite = 0; paddr = 12'h000;
-    @(posedge pclk); penable = 1;
     @(posedge pclk); #1;
+    // Tin hieu Bus APB
+    psel    = 1;
+    penable = 0;
+    pwrite  = 1;
+    paddr   = 12'h000;
+    pwdata  = 32'hB4;
+    pstrb   = 4'h1;
+    
+    // 2. MASTER sang pha ACCESS - Slave sang SETUP
+    @(posedge pclk); #1;
+    penable = 1;
+
+    // 3. Slave sang ACCESS
+    @(posedge pclk); #1;
+    // reg_wr_en = pwrite && addr_match && penable = 1
+    // wr_tx_data_en = reg_wr_en && pstrb[0] && (paddr == 12'h000) = 1
+    // tx_data_reg <= pwdata = 32'hB4
+    // prdata = tx_data_reg
+
+    @(posedge pclk); #1; // Doi Slave ve IDLE
+    // RESET tin hieu ve 0
+    psel    = 0;
+    penable = 0;
+
+    // Tiep tuc pha SETUP cua MASTER
+    @(posedge pclk); #1;
+    // 0xB4 da duoc chot vao tx_data_reg!
+    // Doc ngay 0x000
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;
+    paddr   = 12'h000;
+    // MASTER sang ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    // Slave sang ACCESS
+    @(posedge pclk); #1;
+
     if (prdata[7:0] == 8'hB4 && tx_data == 8'hB4) begin
       $display("[PASS] TC6: Read-After-Write thanh cong, lay dung 0xB4 ngay lap tuc");
       pass_cnt = pass_cnt + 1;
@@ -289,19 +348,63 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC6 (Read-After-Write): prdata = 0x%08h, tx_data = 0x%02h (mong muon 0xB4)", prdata, tx_data);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);
-
-    // --- TC7: Back-to-Back transfers (2 lenh ghi lien tiep khong IDLE) ---
-    // Ghi 1: Ghi 0x11
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'h11; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); // ACCESS Ghi 1
-    // Chuyen ngay sang SETUP Ghi 2: Ghi 0x22
-    psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'h22; pstrb = 4'h1;
-    @(posedge pclk); penable = 1; // ACCESS Ghi 2
-    @(posedge pclk); // Ket thuc Ghi 2
-    psel = 0; penable = 0;
+    // Ve IDLE
     @(posedge pclk); #1;
+    psel    = 0;
+    penable = 0;
+    @(posedge pclk);
+
+  // --- TC7: Back-to-Back transfers (2 lenh ghi lien tiep khong IDLE) ---
+    // 1. Ghi 1
+    // (Ghi 0x11 vào 0x000)
+    // Pha SETUP cua MASTER
+    @(posedge pclk); #1; // CLK 1
+    psel    = 1'b1;
+    penable = 1'b0;
+    pwrite  = 1'b1;
+    paddr   = 12'h000;
+    pwdata  = 32'h11;
+    pstrb   = 4'h1;
+    
+    // MASTER sang pha ACCESS 1 - FSM Slave sang SETUP 1
+    @(posedge pclk); #1; // CLK 2
+    penable = 1'b1;
+
+    // FSM Slave sang pha ACCESS 1
+    // Giu nguyen penable = 1 va pwdata = 0x11 cho den het chu ky nay
+    @(posedge pclk);     // CLK 3
+
+    // 2. Chuyen sang lenh ghi thu 2 luon (SETUP 2 MASTER)
+    @(posedge pclk); #1; // CLK 4: Suon clock nay chot 0x11 vao thanh ghi 0x000
+
+    // Ngay sau suon clock 1ns, MASTER phat pha SETUP 2
+    psel    = 1'b1;         // Giu psel = 1 khong cho Slave ve IDLE
+    penable = 1'b0;      // Ha penable = 0
+    pwrite  = 1'b1;       // Van la lenh ghi
+
+    paddr  = 12'h000; 
+    pwdata = 32'h22;     // Dua du lieu 0x22 moi len Bus APB
+    pstrb  = 4'h1;
+    
+    // 3. Lenh ghi 2
+    // MASTER phat pha ACCESS 2 - Slave sang thang SETUP 2 luon
+    @(posedge pclk); #1; // CLK 5
+    penable = 1; // ACCESS Ghi 2
+
+    // FSM Slave sang ACCESS 2 - Giu penable = 1 va pwdata = 0x22 cho den het chu ky nay
+    @(posedge pclk); #1; // CLK 6 
+    // Ket thuc Ghi 2
+
+    // 4. Ket thuc ca 2 lenh ghi
+    // Slave ve IDLE
+    @(posedge pclk); #1; // CLK 7: suon clock nay chot 0x22 vao thanh ghi
+    // MASTER reset tin hieu, Bus ve IDLE 
+    psel    = 1'b0;
+    penable = 1'b0;
+    pwrite  = 1'b0;
+    #1;
+
+    // tx_data_reg <= pwdata = 32'h22
     if (tx_data == 8'h22) begin
       $display("[PASS] TC7: Back-to-Back thanh cong, tx_data = 0x22");
       pass_cnt = pass_cnt + 1;
