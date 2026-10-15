@@ -526,16 +526,46 @@ module tb_top_interface_uart_slave;
     @(posedge pclk);
 
     // --- TC12: Race Condition (RX nhan byte moi dung luc CPU dang doc 0x004) ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h004;
-    @(posedge pclk); penable = 1;
-    rx_data = 8'h7E; rx_done = 1; // RX gui byte moi
-    @(posedge pclk); // Chot byte moi
-    psel = 0; penable = 0; rx_done = 0;
-    @(posedge pclk);
-    // Doc lai 0x004
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h004;
-    @(posedge pclk); penable = 1;
+    // 1. MASTER phat ra pha SETUP
     @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;        // Doc --> reg_rd_en = 1
+    paddr   = 12'h004;  // rx_data_reg
+
+    // 2. MASTER phat ra pha ACCESS - Slave sang SETUP
+    // rx_data_reg cu dang duoc noi voi MUX doi reg_rd_en tu FSM de cho ra prdata
+    @(posedge pclk); #1;
+    penable = 1;
+    // Du lieu duoc RX gui sang cung luc - Doi truoc rx_data_reg cho xung clock
+    rx_data = 8'h7E; // Du lieu rx_data moi duoc UART_RX gui sang
+    rx_done = 1;     // RX gui byte moi
+
+    // 3. Slave chuyen sang ACCESS
+    // prdata nhan du lieu cu cua rx_data_reg truyen thang ve Bus APB MASTER
+    // Dong thoi rx_data = 0x7E, rx_done = 1 moi duoc luu vao rx_data_reg
+    @(posedge pclk); #1;
+
+    // Doi 1 suon clock de ve IDLE
+    @(posedge pclk); #1;
+    psel    = 0;
+    penable = 0;
+    rx_done = 0;
+
+    // 4. MASTER phat ra pha SETUP 2
+    // Doc lai 0x004
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;
+    paddr   = 12'h004;
+
+    // 5. MASTER phat ra pha ACCESS 2 - Slave chuyen sang SETUP
+    @(posedge pclk); #1;
+    penable = 1;
+    // 6. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+
     if (prdata[7:0] == 8'h7E) begin
       $display("[PASS] TC12: Byte moi 0x7E duoc chot an toan sau Race Condition!");
       pass_cnt = pass_cnt + 1;
@@ -543,6 +573,13 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC12 (Race Condition RX): prdata = 0x%08h (mong muon 0x7E)", prdata);
       err_cnt = err_cnt + 1;
     end
+
+    // RESET VE IDLE
+    @(posedge pclk); #1;
+    psel    = 0;
+    penable = 0;
+    @(posedge pclk); #1;
+
     // --- TC13: Chong kich hoat nham clear_rx_done (False-Trigger Isolation) ---
     rx_done = 1;
     // Doc 0x000 (tx_data_reg)
