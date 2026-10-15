@@ -644,13 +644,27 @@ module tb_top_interface_uart_slave;
     @(posedge pclk); #1;
 
   // --- TC14: Kiem tra toan bo bit stt_reg (0x010) & Bao ve Read-Only ---
-    // Cho parity_error = 1, rx_done = 1, tx_done = 0 -> stt_reg = 3'b110 = 0x06
+    // TC14.1
+    // Cho parity_error = 1, rx_done = 1, tx_done = 0
+    // -> stt_reg = 3'b110 = 0x06
     parity_error = 1;
-    rx_done = 1;
-    tx_done = 0;
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h010;
-    @(posedge pclk); penable = 1;
+    rx_done      = 1;
+    tx_done      = 0;
+
+    // 1. MASTER phat ra pha SETUP
     @(posedge pclk); #1;
+    psel = 1;
+    penable = 0;
+    pwrite = 0;       // Tin hieu doc
+    paddr = 12'h010;  // stt_reg
+
+    // 2. MASTER phat ra pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    // 3. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+
+    // stt_reg[2:0] = 3'b110
     if (prdata[2:0] == 3'b110) begin
       $display("[PASS] TC14.1: Doc stt_reg dung bit {parity_err=1, rx_done=1, tx_done=0} = 0x%01h", prdata[2:0]);
       pass_cnt = pass_cnt + 1;
@@ -658,16 +672,46 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC14.1 (Doc stt_reg): prdata = 0x%08h (mong muon [2:0]=3'b110)", prdata);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0;
-    // Co tinh ghi de 32'hFFFFFFFF vao 0x010 de kiem tra bao ve Read-Only
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h010; pwdata = 32'hFFFFFFFF; pstrb = 4'hF;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk);
-    psel = 0; penable = 0;
-    // Doc lai 0x010 kiem tra gia tri khong bi anh huong
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h010;
-    @(posedge pclk); penable = 1;
+
+  // TC 14.2
+    // RESET ve IDLE
     @(posedge pclk); #1;
+    psel = 0;
+    penable = 0;
+
+    // Co tinh ghi de 32'hFFFFFFFF vao 0x010 de kiem tra bao ve Read-Only
+    // 1. MASTER phat ra pha SETUP
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 1;            // Tin hieu ghi
+    paddr   = 12'h010;      // stt_reg
+    pwdata  = 32'hFFFFFFFF;
+    pstrb   = 4'b1111;
+
+    // 2. MASTER phat ra pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+
+    // 3. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+    psel = 0;
+    penable = 0;
+    // Doc lai 0x010 kiem tra gia tri khong bi anh huong
+
+    // 1. MASTER phat ra pha SETUP
+    @(posedge pclk); #1;
+    psel = 1;
+    penable = 0;
+    pwrite = 0;
+    paddr = 12'h010;
+    // 2. MASTER phat ra pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    // 3. Slave sang ACCESS
+    @(posedge pclk); #1;
+
+    // prdata giu nguyen gia tri 3'b110
     if (prdata[2:0] == 3'b110) begin
       $display("[PASS] TC14.2: stt_reg (0x010) la Read-Only, khong the bi ghi de boi CPU");
       pass_cnt = pass_cnt + 1;
@@ -675,9 +719,16 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC14.2 (Ghi de stt_reg): prdata = 0x%08h (bi ghi de)", prdata);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; parity_error = 0; rx_done = 0; tx_done = 1; @(posedge pclk);
+    @(posedge pclk); #1;
+    // Reset cac tin hieu cua RX sang, chuyen Slave ve IDLE
+    psel         = 0;
+    penable      = 0;
+    parity_error = 0;
+    rx_done      = 0;
+    tx_done      = 1;
+    @(posedge pclk);
 
-    // --- TC15: Dia chi bien ke can (0x014) va unaligned (0x002) phat pslverr ---
+  // --- TC15: Dia chi bien ke can (0x014) va unaligned (0x002) phat pslverr ---
     // Truy cap 0x014 (ngay sau thanh ghi cuoi cung 0x010)
     @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h014;
     @(posedge pclk); penable = 1;
@@ -744,3 +795,4 @@ module tb_top_interface_uart_slave;
   end
 
 endmodule
+
