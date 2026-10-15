@@ -606,22 +606,30 @@ module tb_top_interface_uart_slave;
       err_cnt = err_cnt + 1;
     end
 
-    // TC13.2
+  // TC13.2
     // Reset ve IDLE
     @(posedge pclk); #1;
     psel = 0;
     penable = 0;
 
     // Ghi vao 0x004 (chi doc moi duoc phep phat xung clear)
+    // 1. MASTER phat ra pha SETUP
     @(posedge pclk); #1;
     psel    = 1;
     penable = 0;
-    pwrite  = 1;
-    paddr   = 12'h004;  // 
+    pwrite  = 1;        // Tin hieu ghi
+    paddr   = 12'h004;  // rx_data_reg
     pwdata  = 32'h0;
     pstrb   = 4'h1;     // Chi bat len luc can Ghi
-    @(posedge pclk); penable = 1;
+    // 2. MASTER phat ra pha ACCESS
     @(posedge pclk); #1;
+    penable = 1;
+    // 3. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+
+    // pwrite  = 1;
+    // reg_rd_en = !pwrite && addr_match && penable
+    // clear_rx_done = (paddr == 12'h004) && reg_rd_en = 0
     if (clear_rx_done == 1'b0) begin
       $display("[PASS] TC13.2: Ghi 0x004 khong gay xung gia clear_rx_done");
       pass_cnt = pass_cnt + 1;
@@ -629,9 +637,13 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC13.2 (Ghi 0x004): clear_rx_done = %b (mong muon 0)", clear_rx_done);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; rx_done = 0; @(posedge pclk);
+    @(posedge pclk); #1;
+    psel = 0;
+    penable = 0;
+    rx_done = 0;
+    @(posedge pclk); #1;
 
-    // --- TC14: Kiem tra toan bo bit stt_reg (0x010) & Bao ve Read-Only ---
+  // --- TC14: Kiem tra toan bo bit stt_reg (0x010) & Bao ve Read-Only ---
     // Cho parity_error = 1, rx_done = 1, tx_done = 0 -> stt_reg = 3'b110 = 0x06
     parity_error = 1; rx_done = 1; tx_done = 0;
     @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h010;
