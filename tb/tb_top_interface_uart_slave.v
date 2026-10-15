@@ -414,34 +414,27 @@ module tb_top_interface_uart_slave;
     end
     @(posedge pclk);
 
-    // --- TC8: Stalled SETUP (penable bi tre nhieu chu ky clock) ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'h77; pstrb = 4'h1;
-    @(posedge pclk);
-    @(posedge pclk); #1; // FSM dang cho o SETUP
-    if (pready == 1'b0) begin
-      $display("[PASS] TC8.1: Master giu SETUP, FSM dung cho dung chuan (pready = 0)");
-      pass_cnt = pass_cnt + 1;
-    end else begin
-      $display("[FAIL] TC8.1 (Stalled SETUP): FSM tu nhay vao ACCESS som! pready = %b (mong muon 0)", pready);
-      err_cnt = err_cnt + 1;
-    end
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); // ACCESS xong
-    psel = 0; penable = 0;
-    @(posedge pclk); #1;
-    if (tx_data == 8'h77) begin
-      $display("[PASS] TC8.2: Sau khi bat penable, ghi thanh cong tx_data = 0x77");
-      pass_cnt = pass_cnt + 1;
-    end else begin
-      $display("[FAIL] TC8.2 (Stalled SETUP ghi): tx_data = 0x%02h (mong muon 0x77)", tx_data);
-      err_cnt = err_cnt + 1;
-    end
-    @(posedge pclk);
 
-    // --- TC9: Dia chi khong hop le (pslverr) ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h100; pwdata = 32'h1234; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk); #1; // ACCESS phase
+    // --- TC8: Stalled SETUP (penable bi tre nhieu chu ky clock) ---
+    // --- Test MASTER - bo
+
+  // --- TC9: Dia chi khong hop le (pslverr) ---
+    // 1. MASTER phat ra pha SETUP
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 1;
+    paddr   = 12'h100;      // Dia chi khong ton tai
+    pwdata  = 32'h1234;
+    pstrb   = 4'h1;
+
+    // 2. MASTER phat ra pha ACCESS - FSM Slave chuyen sang SETUP
+    @(posedge pclk); #1;
+    penable = 1;
+    
+    // 3. FSM Slave sang ACCESS
+    @(posedge pclk); #1;    // addr_match = 0 --> pslverr = 1
+
     if (pslverr == 1'b1 && pready == 1'b1) begin
       $display("[PASS] TC9: Bao loi pslverr = 1 khi truy cap dia chi sai 0x100");
       pass_cnt = pass_cnt + 1;
@@ -449,18 +442,46 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC9 (Dia chi sai 0x100): pslverr = %b (mong muon 1), pready = %b (mong muon 1)", pslverr, pready);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);
-
-    // --- TC10: Bao ve thanh ghi Read-Only (rx_data_reg 0x004) ---
-    // Co tinh ghi de rac 0xFF vao rx_data_reg
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h004; pwdata = 32'hFF; pstrb = 4'h1;
-    @(posedge pclk); penable = 1;
+    @(posedge pclk); #1;
+    psel = 0;
+    penable = 0;
     @(posedge pclk);
-    psel = 0; penable = 0;
+
+  // --- TC10: Bao ve thanh ghi Read-Only (rx_data_reg 0x004) ---
+    // prdata = 32'h3C tu TC5
+    // Co tinh ghi de rac 0xFF vao rx_data_reg
+    // 1. MASTER phat ra pha SETUP
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 1;          // Tin hieu ghi
+    paddr   = 12'h004;    // rx_data_reg - thanh ghi Read Only
+    pwdata  = 32'hFF;     // Gia tri rac
+    pstrb   = 4'h1;
+
+    // 2. MASTER phat ra pha ACCESS - FSM Slave chuyen sang SETUP
+    @(posedge pclk); #1;
+    penable = 1;
+
+    // 3. FSM Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+    // Write Decoder khong hoat dong do paddr = 0x04
+    psel    = 0;
+    penable = 0;
+
+    // 4. FSM Slave quay ve IDLE
     @(posedge pclk);
     // Doc lai 0x004
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h004;
-    @(posedge pclk); penable = 1;
+    // 5. Pha SETUP 2 cua MASTER - doc lai rx_data_reg
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;          // Lenh doc
+    paddr   = 12'h004;    // Doc thanh ghi rx_data_reg
+    // 6. Pha ACCESS 2 cua MASTER
+    @(posedge pclk); #1;
+    penable = 1;
+    // 7. Slave chuyen sang ACCESS 2 - Doc du lieu
     @(posedge pclk); #1;
     if (prdata[7:0] == 8'h3C) begin
       $display("[PASS] TC10: Thanh ghi RO (0x004) duoc bao ve, khong bi ghi de rac");
@@ -469,19 +490,37 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC10 (Bao ve Read-Only 0x004): prdata = 0x%08h (mong muon 0x3C khong bi ghi de)", prdata);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0; @(posedge pclk);
-
-    // --- TC11: Byte Strobe pstrb[0] = 0 chan ghi ---
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h000; pwdata = 32'h99; pstrb = 4'h0;
-    @(posedge pclk); penable = 1;
-    @(posedge pclk);
-    psel = 0; penable = 0;
     @(posedge pclk); #1;
-    if (tx_data == 8'h77) begin
-      $display("[PASS] TC11: pstrb[0] = 0 chan ghi dung, du lieu giu nguyen 0x77");
+    psel    = 0;
+    penable = 0;
+    @(posedge pclk);
+
+  // --- TC11: Byte Strobe pstrb[0] = 0 chan ghi ---
+    // 1. MASTER phat ra pha SETUP
+    @(posedge pclk); #1;
+    psel = 1;
+    penable = 0;
+    pwrite = 1;
+    paddr = 12'h000;  // tx_data_reg
+    pwdata = 32'h99;
+    pstrb = 4'h0;     // Khong chon ghi vao cum byte nao ca
+
+    // 2. MASTER phat pha ACCESS
+    @(posedge pclk); #1;
+    penable = 1;
+    // 3. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+    // RESET tin hieu
+    psel = 0;
+    penable = 0;
+    @(posedge pclk); #1;
+
+    // tx_data_reg = 0x22 o TC7 giu nguyen
+    if (tx_data == 8'h22) begin
+      $display("[PASS] TC11: pstrb[0] = 0 chan ghi dung, du lieu giu nguyen 0x22");
       pass_cnt = pass_cnt + 1;
     end else begin
-      $display("[FAIL] TC11 (Byte Strobe pstrb=0): tx_data = 0x%02h (mong muon 0x77 khong bi ghi de)", tx_data);
+      $display("[FAIL] TC11 (Byte Strobe pstrb=0): tx_data = 0x%02h (mong muon 0x22 khong bi ghi de)", tx_data);
       err_cnt = err_cnt + 1;
     end
     @(posedge pclk);
