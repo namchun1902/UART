@@ -645,7 +645,9 @@ module tb_top_interface_uart_slave;
 
   // --- TC14: Kiem tra toan bo bit stt_reg (0x010) & Bao ve Read-Only ---
     // Cho parity_error = 1, rx_done = 1, tx_done = 0 -> stt_reg = 3'b110 = 0x06
-    parity_error = 1; rx_done = 1; tx_done = 0;
+    parity_error = 1;
+    rx_done = 1;
+    tx_done = 0;
     @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h010;
     @(posedge pclk); penable = 1;
     @(posedge pclk); #1;
