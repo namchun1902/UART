@@ -580,12 +580,24 @@ module tb_top_interface_uart_slave;
     penable = 0;
     @(posedge pclk); #1;
 
-    // --- TC13: Chong kich hoat nham clear_rx_done (False-Trigger Isolation) ---
+  // --- TC13: Chong kich hoat nham clear_rx_done (False-Trigger Isolation) ---
     rx_done = 1;
     // Doc 0x000 (tx_data_reg)
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 0; paddr = 12'h000;
-    @(posedge pclk); penable = 1;
+    // 1. Pha SETUP cua MASTER
     @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 0;        // Keo reg_rd_en len 1
+    paddr   = 12'h000;  // tx_data_reg
+
+    // 2. Pha ACCESS cua MASTER
+    @(posedge pclk); #1;
+    penable = 1;
+
+    // 3. Slave chuyen sang ACCESS
+    @(posedge pclk); #1;
+
+    // clear_rx_done = (paddr == 12'h004) && reg_rd_en = 0
     if (clear_rx_done == 1'b0) begin
       $display("[PASS] TC13.1: Doc 0x000 khong gay xung gia clear_rx_done");
       pass_cnt = pass_cnt + 1;
@@ -593,9 +605,21 @@ module tb_top_interface_uart_slave;
       $display("[FAIL] TC13.1 (Doc 0x000): clear_rx_done = %b (mong muon 0)", clear_rx_done);
       err_cnt = err_cnt + 1;
     end
-    @(posedge pclk); psel = 0; penable = 0;
+
+    // TC13.2
+    // Reset ve IDLE
+    @(posedge pclk); #1;
+    psel = 0;
+    penable = 0;
+
     // Ghi vao 0x004 (chi doc moi duoc phep phat xung clear)
-    @(posedge pclk); psel = 1; penable = 0; pwrite = 1; paddr = 12'h004; pwdata = 32'h0; pstrb = 4'h1;
+    @(posedge pclk); #1;
+    psel    = 1;
+    penable = 0;
+    pwrite  = 1;
+    paddr   = 12'h004;  // 
+    pwdata  = 32'h0;
+    pstrb   = 4'h1;     // Chi bat len luc can Ghi
     @(posedge pclk); penable = 1;
     @(posedge pclk); #1;
     if (clear_rx_done == 1'b0) begin
