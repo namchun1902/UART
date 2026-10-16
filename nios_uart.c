@@ -208,24 +208,24 @@ void uart_isr_handler(void *context)
 
     // --------------------------------------------------------------------------
     // NHÁNH 2: XỬ LÝ NGẮT TRUYỀN DỮ LIỆU (TX INTERRUPT)
+    // [QUAN TRỌNG]: Chỉ xử lý khi tx_done=1 VÀ phần mềm ĐANG CHO PHÉP ngắt TX (tx_ie=1)
     // --------------------------------------------------------------------------
-    if (status & UART_STT_TX_DONE) {
+    if ((status & UART_STT_TX_DONE) && (g_ctrl_mirror & UART_CTRL_TX_IE)) {
         uint8_t next_tx_byte;
         if (tx_buf_get(&next_tx_byte)) {
             // Còn dữ liệu trong Ring Buffer: Nạp byte mới vào TX_DATA_REG (0x000)
             HW_WRITE_32(base, UART_REG_TX_DATA, next_tx_byte);
 
-            // Bật start_tx = 1 để kích phát, giữ nguyên tx_ie = 1 và rx_ie = 1
-            g_ctrl_mirror |= (UART_CTRL_START_TX | UART_CTRL_TX_IE | UART_CTRL_RX_IE);
+            // Bật start_tx = 1 để kích phát, bảo toàn trạng thái ngắt hiện tại
+            g_ctrl_mirror |= (UART_CTRL_START_TX | UART_CTRL_TX_IE);
             HW_WRITE_32(base, UART_REG_CTRL, g_ctrl_mirror);
             
             // start_tx tự xóa sau 1 clock trong phần cứng
             g_ctrl_mirror &= ~UART_CTRL_START_TX;
         } else {
             // Đã truyền xong toàn bộ dữ liệu trong bộ đệm:
-            // TẮT tx_ie = 0 để hạ chân ngắt uart_irq về 0
+            // TẮT tx_ie = 0 để hạ chân ngắt uart_irq về 0, giữ nguyên rx_ie
             g_ctrl_mirror &= ~UART_CTRL_TX_IE;
-            g_ctrl_mirror |= UART_CTRL_RX_IE;
             HW_WRITE_32(base, UART_REG_CTRL, g_ctrl_mirror);
         }
     }
@@ -287,7 +287,7 @@ void uart_putchar(uintptr_t base_addr, char c)
     if (!(g_ctrl_mirror & UART_CTRL_TX_IE)) {
         // Bật tx_ie = 1. Vì phần cứng đang rảnh (tx_done = 1),
         // ngay sau khi mở lại ngắt, phần cứng sẽ kích hoạt ISR để lấy byte ra phát
-        g_ctrl_mirror |= (UART_CTRL_TX_IE | UART_CTRL_RX_IE);
+        g_ctrl_mirror |= UART_CTRL_TX_IE;
         HW_WRITE_32(base_addr, UART_REG_CTRL, g_ctrl_mirror);
     }
 

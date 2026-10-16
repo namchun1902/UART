@@ -1,9 +1,11 @@
 /**
  * ==============================================================================
- * Project      : APB UART IP Core on Altera/Intel FPGA DE2 (Nios II Soft-CPU)
- * File Name    : nios2_uart.c
- * Description  : Driver C điều khiển UART qua ngắt (Interrupt-Driven) cho Nios II.
- *                Hỗ trợ đầy đủ:
+ * Project      : APB UART IP Core on Altera/Intel FPGA (Nios II & Nios V Soft-CPUs)
+ * File Name    : nios2_uart.c (Tương thích cả Nios II và Nios V/m, V/c, V/g)
+ * Description  : Driver C điều khiển UART qua ngắt (Interrupt-Driven).
+ *                Hỗ trợ đa nền tảng:
+ *                  - Tương thích Nios II truyền thống (__nios2__)
+ *                  - Tương thích Nios V kiến trúc RISC-V (__niosv__, __riscv)
  *                  - Khung truyền cấu hình động (5..8 data bits, 1/2 stop, parity)
  *                  - Ngắt nhận RX tự động xóa cờ khi đọc thanh ghi RX_DATA
  *                  - Ngắt phát TX điều khiển theo mức (Level-triggered)
@@ -16,16 +18,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Nios II HAL Headers
-#ifdef __nios2__
-#include <system.h>
-#include <io.h>
-#include <sys/alt_irq.h>
+// Nios II & Nios V (RISC-V) HAL Headers
+#if defined(__nios2__) || defined(__niosv__) || defined(__niosv) || defined(__riscv)
+  #include <system.h>
+  #include <io.h>
+  #include <sys/alt_irq.h>
 #else
-// Định nghĩa giả lập khi biên dịch kiểm tra trên môi trường không phải Nios II
-typedef uint32_t alt_irq_context;
-static inline alt_irq_context alt_irq_disable_all(void) { return 0; }
-static inline void alt_irq_enable_all(alt_irq_context ctx) { (void)ctx; }
+  // Định nghĩa giả lập khi biên dịch kiểm tra trên môi trường PC/GCC thông thường
+  typedef uint32_t alt_irq_context;
+  static inline alt_irq_context alt_irq_disable_all(void) { return 0; }
+  static inline void alt_irq_enable_all(alt_irq_context ctx) { (void)ctx; }
 #endif
 
 // ==============================================================================
@@ -91,7 +93,7 @@ static inline void alt_irq_enable_all(alt_irq_context ctx) { (void)ctx; }
 // 2. MACRO TRUY XUẤT PHẦN CỨNG (I/O ACCESS)
 // ==============================================================================
 
-#ifdef __nios2__
+#if defined(__nios2__) || defined(__niosv__) || defined(__niosv) || defined(__riscv)
   #define HW_READ_32(base, offset)        IORD_32DIRECT((base), (offset))
   #define HW_WRITE_32(base, offset, val)  IOWR_32DIRECT((base), (offset), (val))
 #else
@@ -178,7 +180,7 @@ static inline bool tx_buf_get(uint8_t *byte) {
  * @brief  Hàm ngắt được gọi tự động mỗi khi chân uart_irq nhảy lên mức cao (1).
  * @param  context: Con trỏ ngữ cảnh do Nios II HAL truyền vào (địa chỉ base).
  */
-#ifdef __nios2__
+#if defined(__nios2__) || defined(__niosv__) || defined(__niosv) || defined(__riscv)
 static void uart_isr_handler(void *context)
 #else
 void uart_isr_handler(void *context)
@@ -234,7 +236,7 @@ void uart_isr_handler(void *context)
 // ==============================================================================
 
 /**
- * @brief  Khởi tạo bộ UART và đăng ký ngắt với Nios II HAL.
+ * @brief  Khởi tạo bộ UART và đăng ký ngắt với Nios II / Nios V HAL.
  * @param  base_addr: Địa chỉ cơ sở của APB UART (ví dụ UART_0_BASE).
  * @param  cfg_val  : Cấu hình khung (UART_CFG_8N1, UART_CFG_8E1,...).
  */
@@ -251,8 +253,8 @@ void uart_init(uintptr_t base_addr, uint32_t cfg_val)
     g_ctrl_mirror = UART_CTRL_RX_IE;
     HW_WRITE_32(base_addr, UART_REG_CTRL, g_ctrl_mirror);
 
-    // Đăng ký hàm ngắt với Nios II Interrupt Controller (HAL)
-#ifdef __nios2__
+    // Đăng ký hàm ngắt với Interrupt Controller (HAL Nios II & Nios V)
+#if defined(__nios2__) || defined(__niosv__) || defined(__niosv) || defined(__riscv)
   #ifdef ALT_ENHANCED_INTERRUPT_API_PRESENT
     alt_ic_isr_register(UART_IRQ_CTRL_ID, UART_IRQ, uart_isr_handler, (void *)base_addr, NULL);
     alt_ic_irq_enable(UART_IRQ_CTRL_ID, UART_IRQ);
@@ -353,7 +355,7 @@ int main(void)
 
     // 2. Gửi thông báo chào mừng ra PC Terminal
     uart_puts(uart_base, "\r\n==============================================\r\n");
-    uart_puts(uart_base, "     KHOI DONG HE THONG APB UART TREN NIOS II \r\n");
+    uart_puts(uart_base, "    KHOI DONG APB UART (NIOS II & NIOS V/m)   \r\n");
     uart_puts(uart_base, "     Che do: NGAT TOAN PHAN (RX_IE & TX_IE)   \r\n");
     uart_puts(uart_base, "==============================================\r\n");
     uart_puts(uart_base, "Nhap ky tu tu ban phim de ECHO lai:\r\n");
