@@ -32,7 +32,10 @@ module apb_datapath (
   output wire [1:0] data_bit_num,
   output wire       stop_bit_num,
   output wire       parity_en,
-  output wire       parity_type
+  output wire       parity_type,
+
+  // Tin hieu interrupt gui ve CPU
+  output wire uart_irq
 );
   // Cac thanh ghi trong datapath
   reg [31:0] tx_data_reg;
@@ -100,6 +103,14 @@ module apb_datapath (
 
   // Cat bit sang tx
   assign start_tx = ctrl_reg[0];
+  // Cat cac bit interrupt
+  wire rx_ie = ctrl_reg[1];                                                                                                                                                                                                            
+  wire tx_ie = ctrl_reg[2];
+  // Tạo tín hiệu interrupt
+  wire rx_irq = rx_done && rx_ie; // Có byte đến và CPU cho phép ngắt
+  wire tx_irq = tx_done && tx_ie; // Truyền xong và CPU cho phép ngắt 
+  // Tong hop thanh 1 tin hieu ngat duy nhat gui ve CPU
+  assign uart_irq = rx_irq | tx_irq;
 
   // IV. Thanh ghi rx_data_reg
   always @(posedge pclk or negedge presetn) begin

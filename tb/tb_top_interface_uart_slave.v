@@ -33,6 +33,8 @@ module tb_top_interface_uart_slave;
 
   reg [31:0] prdata_sample; // Biến tạm dùng nội bộ trong Testbench
 
+  wire        uart_irq;
+
   integer pass_cnt;
   integer err_cnt;
 
@@ -61,7 +63,8 @@ module tb_top_interface_uart_slave;
     .data_bit_num  ( data_bit_num  ),
     .stop_bit_num  ( stop_bit_num  ),
     .parity_en     ( parity_en     ),
-    .parity_type   ( parity_type   )
+    .parity_type   ( parity_type   ),
+    .uart_irq      ( uart_irq      )
   );
 
   // Xung clock 50MHz (T = 1/F = 1/50Mhz = 20ns)

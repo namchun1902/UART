@@ -25,7 +25,8 @@ module apb_uart #(
   input  wire        rx,          // Chan nhan du lieu noi tiep (serial) tu ngoai vi (PC) vao
   input  wire        cts_n,       // Clear-to-send (Active low, bat tay phan cung)
   output wire        tx,          // Chan truyen du lieu noi tiep ra ngoai vi
-  output wire        rts_n        // Request-to-send (Active low, bat tay phan cung)
+  output wire        rts_n,       // Request-to-send (Active low, bat tay phan cung)
+  output wire        uart_irq     // Tin hieu interrupt gui ve controller
 );
 
   // I. Tin hieu trung gian giao tiep giua cac khoi
@@ -82,7 +83,8 @@ module apb_uart #(
     .data_bit_num  ( data_bit_num  ),
     .stop_bit_num  ( stop_bit_num  ),
     .parity_en     ( parity_en     ),
-    .parity_type   ( parity_type   )
+    .parity_type   ( parity_type   ),
+    .uart_irq      ( uart_irq      )
   );
 
   // 2. Khoi Sinh Baudrate Dung Chung (Single Baudrate Generator)

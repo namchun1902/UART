@@ -27,7 +27,10 @@ module top_interface_uart_slave (
   output wire [1:0] data_bit_num,
   output wire       stop_bit_num,
   output wire       parity_en,
-  output wire       parity_type       // 0 = Odd, 1 = Even
+  output wire       parity_type,      // 0 = Odd, 1 = Even
+
+  // Tín hiệu interrupt gửi về Controller của CPU
+  output wire       uart_irq
 );
 
   // Day noi bo tu FSM -> Datapath
@@ -69,6 +72,7 @@ module top_interface_uart_slave (
     .data_bit_num  ( data_bit_num  ),
     .stop_bit_num  ( stop_bit_num  ),
     .parity_en     ( parity_en     ),
-    .parity_type   ( parity_type   )
+    .parity_type   ( parity_type   ),
+    .uart_irq      ( uart_irq      )
   );
 endmodule
