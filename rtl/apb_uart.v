@@ -6,7 +6,7 @@ module apb_uart #(
 ) (
   // 1. TIN HIEU TOAN CUC
   input  wire        clk,         // Tin hieu clock he thong cho UART Core
-  input  wire        reset_n,     // Reset bat dong bo active low he thong
+  // input  wire        reset_n,     // Reset bat dong bo active low he thong
 
   // 2. BUS APB
   input  wire        pclk,        // APB clock signal
@@ -56,7 +56,7 @@ module apb_uart #(
   // 1. Khoi APB Slave Interface (Gom FSM + Datapath Register)
   top_interface_uart_slave apb_interface (
     // Bus APB
-    .pclk          ( pclk          ),
+    .pclk          ( clk          ),
     .presetn       ( presetn       ),
     .psel          ( psel          ),
     .penable       ( penable       ),
@@ -95,7 +95,7 @@ module apb_uart #(
     .OS_RX        ( OS_RX         )
   ) u_baudrate (
     .clk          ( clk           ),
-    .rst_n        ( reset_n       ),
+    .rst_n        ( presetn       ),
     .tx_tick_last ( tx_tick_last  ),
     .rx_tick_last ( rx_tick_last  )
   );
@@ -105,7 +105,7 @@ module apb_uart #(
     .DATA_NUM     ( 8             )
   ) u_uart_tx (
     .clk          ( clk           ),
-    .rst_n        ( reset_n       ),
+    .rst_n        ( presetn       ),
     .tx_tick_last ( tx_tick_last  ),
     .start_tx     ( start_tx      ),
     .tx_data      ( tx_data       ),
@@ -120,7 +120,7 @@ module apb_uart #(
   // 4. Khoi Nhan UART (Receiver)
   uart_rx u_uart_rx (
     .clk           ( clk           ),
-    .rst_n         ( reset_n       ),
+    .rst_n         ( presetn       ),
     .rx_tick_last  ( rx_tick_last  ),
     .rx            ( rx            ),
     .data_bit_num  ( data_bit_num  ),

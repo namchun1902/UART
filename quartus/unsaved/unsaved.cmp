@@ -1,0 +1,12 @@
+	component unsaved is
+		port (
+			clk_clk                      : in  std_logic                    := 'X';             -- clk
+			reset_reset_n                : in  std_logic                    := 'X';             -- reset_n
+			uart_apb_0_conduit_end_cts_n : in  std_logic                    := 'X';             -- cts_n
+			uart_apb_0_conduit_end_rts_n : out std_logic;                                       -- rts_n
+			uart_apb_0_conduit_end_tx    : out std_logic;                                       -- tx
+			uart_apb_0_conduit_end_rx    : in  std_logic                    := 'X';             -- rx
+			uart_apb_0_conduit_end_pstrb : in  std_logic_vector(3 downto 0) := (others => 'X')  -- pstrb
+		);
+	end component unsaved;
+
